@@ -1,13 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
-
-
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[4]:
+# In[2]:
 
 
 get_ipython().run_line_magic('pylab', 'inline')
@@ -19,8 +13,7 @@ from keras.models import Sequential
 from keras.layers import Dense
 
 
-# In[5]:
-
+# In[3]:
 
 
 def deriveDay(x):
@@ -123,12 +116,13 @@ def getHourFloatT5 (x):
     return total
 
 
-# In[6]:
+# In[7]:
 
 
 df=pd.read_csv("training.csv")
 
-# In[7]:
+
+# In[8]:
 
 
 df['dayOfWeek']=df['day'].apply(deriveDay)
@@ -137,20 +131,8 @@ df['hour']=df['timestamp'].apply(deriveHour)
 df['PartOfDay']=df['timestamp'].apply(derivePartOfDay)
 
 
-# In[8]:
-
-#Feature Engineering: derived weekend column based on the trend of data
-d_mean_demand=df.groupby(['dayOfWeek','PartOfDay']).mean()
-d_morning=df.loc[df.PartOfDay=='Morning']
-d_mean_demand_morning=d_morning.groupby(['dayOfWeek'], as_index=False).mean()
-d_mean_demand_morning=d_mean_demand_morning.nsmallest(2, ['demand'])
-weekend_list=d_mean_demand_morning['dayOfWeek'].tolist()
-df['Weekend']=0
-weekend=df.loc[df.dayOfWeek == weekend_list[0], 'Weekend'] = 1
-weekend=df.loc[df.dayOfWeek == weekend_list[1], 'Weekend'] = 1
-
-
 # In[9]:
+
 
 # convert geohash to x,y,z
 df['latlong']=df['geohash6'].apply(g.decode)
@@ -160,6 +142,7 @@ df['z']=df['latlong'].apply(deriveZ)
 
 
 # In[10]:
+
 
 # transform timestamp into two variables that swing back and forth out of sink
 df['hourfloat']=df['timestamp'].apply(getHourFloat)
@@ -187,63 +170,69 @@ df['x_hour_T5']=np.sin(2.*np.pi*df.hourfloatT5/24.)
 df['y_hour_T5']=np.cos(2.*np.pi*df.hourfloatT5/24.)
 
 
-# In[11]:
+# In[13]:
 
 
-trainingData=pd.concat([df[['x', 'y','z','Weekend','x_hour','y_hour']],df[['demand']]], axis=1)
-trainingDataT1=pd.concat([df[['x', 'y','z','Weekend','x_hour_T1','y_hour_T1']],df[['demand']]], axis=1)
-trainingDataT2=pd.concat([df[['x', 'y','z','Weekend','x_hour_T2','y_hour_T2']],df[['demand']]], axis=1)
-trainingDataT3=pd.concat([df[['x', 'y','z','Weekend','x_hour_T3','y_hour_T3']],df[['demand']]], axis=1)
-trainingDataT4=pd.concat([df[['x', 'y','z','Weekend','x_hour_T4','y_hour_T4']],df[['demand']]], axis=1)
-trainingDataT5=pd.concat([df[['x', 'y','z','Weekend','x_hour_T5','y_hour_T5']],df[['demand']]], axis=1)
+gen_onehot_features1 = pd.get_dummies(df['dayOfWeek'])
 
 
-# In[12]:
+# In[15]:
+
+
+trainingData=pd.concat([df[['x', 'y','z','x_hour','y_hour']],gen_onehot_features1,df[['demand']]], axis=1)
+trainingDataT1=pd.concat([df[['x', 'y','z','x_hour_T1','y_hour_T1']],gen_onehot_features1,df[['demand']]], axis=1)
+trainingDataT2=pd.concat([df[['x', 'y','z','x_hour_T2','y_hour_T2']],gen_onehot_features1,df[['demand']]], axis=1)
+trainingDataT3=pd.concat([df[['x', 'y','z','x_hour_T3','y_hour_T3']],gen_onehot_features1,df[['demand']]], axis=1)
+trainingDataT4=pd.concat([df[['x', 'y','z','x_hour_T4','y_hour_T4']],gen_onehot_features1,df[['demand']]], axis=1)
+trainingDataT5=pd.concat([df[['x', 'y','z','x_hour_T5','y_hour_T5']],gen_onehot_features1,df[['demand']]], axis=1)
+
+
+# In[16]:
 
 
 seed = 7
 numpy.random.seed(seed)
 
 
-# In[13]:
+# In[18]:
 
 
-X = trainingData.iloc[:,0:6]
-Y = trainingData.iloc[:,6]
+X = trainingData.iloc[:,0:12]
+Y = trainingData.iloc[:,12]
 
 
-# In[14]:
+# In[21]:
 
 
-X_T1 = trainingDataT1.iloc[:,0:6]
-X_T2 = trainingDataT2.iloc[:,0:6]
-X_T3 = trainingDataT3.iloc[:,0:6]
-X_T4 = trainingDataT4.iloc[:,0:6]
-X_T5 = trainingDataT5.iloc[:,0:6]
+X_T1 = trainingDataT1.iloc[:,0:12]
+X_T2 = trainingDataT2.iloc[:,0:12]
+X_T3 = trainingDataT3.iloc[:,0:12]
+X_T4 = trainingDataT4.iloc[:,0:12]
+X_T5 = trainingDataT5.iloc[:,0:12]
 
 
-# In[15]:
+# In[29]:
 
 
 model = Sequential()
-model.add(Dense(12, input_dim=6, kernel_initializer='uniform', activation='relu'))
-model.add(Dense(8, kernel_initializer='uniform', activation='relu'))
+model.add(Dense(16, input_dim=12, kernel_initializer='uniform', activation='relu'))
+model.add(Dense(12, kernel_initializer='uniform', activation='relu'))
 model.add(Dense(1, kernel_initializer='uniform', activation='sigmoid'))
 
 
-# In[16]:
+# In[30]:
 
 
 model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
 
-# In[17]:
+# In[31]:
 
 
 model.fit(X, Y, epochs=150, batch_size=10,  verbose=0)
 
 
-# In[18]:
+# In[32]:
 
 
 predictionsT1= model.predict(X_T1)
@@ -253,7 +242,7 @@ predictionsT4 = model.predict(X_T4)
 predictionsT5 = model.predict(X_T5)
 
 
-# In[19]:
+# In[33]:
 
 
 print('Demands for T1: '+ str(predictionsT1)) # return the demands for timestamp+15mins
@@ -263,7 +252,7 @@ print('Demands for T4: '+ str(predictionsT4)) # return the demands for timestamp
 print('Demands for T5: '+ str(predictionsT5)) # return the demands for timestamp+75mins
 
 
-# In[20]:
+# In[34]:
 
 
 df['demand_T1']=predictionsT1
@@ -273,17 +262,11 @@ df['demand_T4']=predictionsT4
 df['demand_T5']=predictionsT5
 
 
-# In[26]:
+# In[35]:
 
 
 Result=df[['geohash6', 'day','timestamp','demand','demand_T1','demand_T2','demand_T3','demand_T4','demand_T5']]
 Result
-
-
-# In[ ]:
-
-
-
 
 
 # In[ ]:
