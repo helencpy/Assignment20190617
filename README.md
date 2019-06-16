@@ -1,5 +1,6 @@
 # Assignment20190617
+1. Install geohash library, https://github.com/hkwi/python-geohash
 
-1. Insert data file path, e.g. df=pd.read_csv("training.csv")
+2. Insert data file path, e.g. df=pd.read_csv("training.csv")
 
-2. Run the python code
+3. Run the python code
